@@ -10,9 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* --- 全新初始畫面美化樣式 --- */
         body.initial-view-background {
@@ -462,6 +463,11 @@
             align-items: center;
             z-index: 1000;
             backdrop-filter: blur(5px);
+        }
+
+        /* API Error Modal - highest z-index to always show on top */
+        #api-error-modal {
+            z-index: 10000 !important;
         }
         .magnified-image-modal-content {
             position: relative;
@@ -1130,9 +1136,13 @@
     <div id="app-container" class="w-full max-w-4xl mx-auto p-4 md:p-6">
 
         <div id="entry-view" class="w-full h-screen flex flex-col items-center justify-center p-4">
-            <!-- 建置說明按鈕 -->
-            <div class="absolute top-4 right-4 z-10">
-                <a href="https://filedn.com/laMtL9jmKf7JrDEQG0A6OPy/html/%E5%89%9B%E5%A5%BD%E5%AD%B8%E6%9C%80%E6%96%B0%E7%89%88-%E5%BB%BA%E7%BD%AE%E6%89%8B%E5%86%8A/%E5%89%9B%E5%A5%BD%E5%AD%B8%E6%95%99%E5%B8%AB%E4%BD%BF%E7%94%A8%E5%BB%BA%E7%BD%AE%E6%89%8B%E5%86%8ANew.html" target="_blank" rel="noopener noreferrer" 
+            <!-- 右上角按鈕區 -->
+            <div class="absolute top-4 right-4 z-10 flex gap-2">
+                <button id="firebase-settings-btn" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-md transition-all duration-200 hover:shadow-lg" title="Firebase 設定">
+                    <i class="fas fa-cog mr-2"></i>
+                    Firebase 設定
+                </button>
+                <a href="https://filedn.com/laMtL9jmKf7JrDEQG0A6OPy/html/%E5%89%9B%E5%A5%BD%E5%AD%B8%E6%9C%80%E6%96%B0%E7%89%88-%E5%BB%BA%E7%BD%AE%E6%89%8B%E5%86%8A/%E5%89%9B%E5%A5%BD%E5%AD%B8%E6%95%99%E5%B8%AB%E4%BD%BF%E7%94%A8%E5%BB%BA%E7%BD%AE%E6%89%8B%E5%86%8ANew.html" target="_blank" rel="noopener noreferrer"
                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-md transition-all duration-200 hover:shadow-lg">
                     <i class="fas fa-play-circle mr-2"></i>
                     建置操作手冊
@@ -1176,7 +1186,7 @@
                 <p class="text-xs">App ID: <span id="app-id-display"></span> &nbsp;&bull;&nbsp; User ID: <span id="user-id-display"></span></p>
                 <div class="mt-2">
                     <a href="https://kentxchang.blogspot.tw" target="_blank" rel="noopener noreferrer" class="made-by-text !bg-white/50 !text-indigo-600 hover:!bg-white">
-                       Made by 阿剛老師V2.5
+                       Made by 阿剛老師V3
                     </a>
                 </div>
             </div>
@@ -1184,7 +1194,17 @@
 
         <div id="teacher-classroom-code-view" class="hidden text-center">
             <h2 class="text-3xl font-bold text-gray-800 mb-6">教師登入：請輸入教室代碼</h2>
-            <div class="max-w-sm mx-auto">
+            <div class="max-w-sm mx-auto space-y-4">
+                <!-- 已開啟教室代碼選單 -->
+                <div id="teacher-recent-classrooms-container" class="hidden mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2 text-left">選擇已開啟的教室：</label>
+                    <select id="teacher-recent-classrooms-select" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">-- 選擇教室代碼 --</option>
+                    </select>
+                </div>
+
+                <div class="text-sm text-gray-500">或手動輸入新代碼：</div>
+
                 <input type="text" id="teacher-classroom-code-input" placeholder="請輸入自訂教室代碼" class="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <button id="teacher-classroom-code-submit-btn" class="btn btn-primary mt-4">進入教師面板 ➡️</button>
                 <button id="teacher-classroom-code-back-btn" class="btn btn-gray mt-2">返回 ↩️</button>
@@ -1237,7 +1257,10 @@
                 </div>
             </div>
 
-            <div class="absolute bottom-4 left-4">
+            <div class="absolute bottom-4 left-4 flex gap-3">
+                <button id="leave-classroom-btn" class="btn btn-gray !w-auto text-sm h-10 px-3 py-2 flex items-center justify-center" title="暫離教室（保留資料）">
+                    <i class="fas fa-sign-out-alt mr-2"></i>暫離教室
+                </button>
                 <button id="ai-settings-btn" class="text-gray-500 hover:text-blue-700 transition-colors text-3xl" title="AI 設定">
                     <i class="fas fa-robot"></i>
                 </button>
@@ -1511,6 +1534,67 @@
         <button id="close-message-btn" class="absolute top-1 right-2 text-white text-xl leading-none">×</button>
     </div>
 
+    <!-- Firebase 設定 Modal -->
+    <div id="firebase-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[110] flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 max-w-lg w-full my-auto max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">貼上 Firebase 設定</h2>
+                <button id="firebase-settings-modal-close-btn" class="text-gray-400 hover:text-gray-700 text-3xl font-bold">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-3">
+                請從您的 Firebase 專案中，複製 <code>firebaseConfig</code> 物件 <code>{</code> 和 <code>}</code> <strong>之間</strong>的六行內容，貼到下方：
+            </p>
+            <textarea id="firebase-config-textarea" rows="7" class="w-full p-3 border rounded-md font-mono text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="apiKey: &quot;...&quot;,
+authDomain: &quot;...&quot;,
+projectId: &quot;...&quot;,
+storageBucket: &quot;...&quot;,
+messagingSenderId: &quot;...&quot;,
+appId: &quot;...&quot;"></textarea>
+
+            <button id="apply-firebase-settings-btn" class="w-full px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition duration-300 mt-4">
+                套用設定
+            </button>
+            <button id="generate-firebase-url-btn" class="w-full px-6 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition duration-300 mt-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                生成異機專用網址(可免再設定firebase)
+            </button>
+            <button id="clear-firebase-config-btn" class="w-full px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-300 mt-2">
+                <i class="fas fa-trash-alt mr-2"></i>清除本地設定值
+            </button>
+            <p id="firebase-copy-success-msg" class="text-center mt-3 text-sm font-medium hidden"></p>
+
+            <!-- 網址資訊顯示區域 -->
+            <div id="firebase-url-info" class="hidden mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="mb-3">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">短網址 (已複製)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="firebase-short-url-display" readonly class="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="copy-short-url-btn" class="px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition" title="複製短網址">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">原始網址</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="firebase-original-url-display" readonly class="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="copy-original-url-btn" class="px-3 py-2 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 transition" title="複製原始網址">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code 顯示區域 -->
+            <div id="firebase-qrcode-container" class="hidden mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3 text-center">掃描 QR Code 或下載圖片</h3>
+                <div id="firebase-qrcode" class="flex justify-center mb-3"></div>
+                <button id="download-qrcode-btn" class="w-full px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 transition duration-300">
+                    <i class="fas fa-download mr-2"></i>下載 QR Code
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="magnified-image-modal" class="magnified-image-modal hidden">
         <div class="magnified-image-modal-content">
             <button id="magnified-image-modal-close-btn" class="magnified-image-modal-close">×</button>
@@ -1571,6 +1655,28 @@
             </div>
             <div class="settings-button-group">
                 <button id="save-ai-settings-btn" class="btn btn-primary">儲存設定 💾</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Error Modal -->
+    <div id="api-error-modal" class="magnified-image-modal hidden">
+        <div class="magnified-image-modal-content" style="max-width: 600px;">
+            <button id="api-error-modal-close-btn" class="magnified-image-modal-close">×</button>
+            <h4 class="text-2xl font-bold mb-4 text-red-600">⚠️ API 錯誤</h4>
+            <div class="space-y-4">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h5 class="font-bold text-lg mb-2 text-gray-800">錯誤原因：</h5>
+                    <p id="api-error-message" class="text-gray-700 leading-relaxed"></p>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h5 class="font-bold text-lg mb-2 text-gray-800">💡 解決方法：</h5>
+                    <ul id="api-error-solutions" class="list-disc list-inside text-gray-700 space-y-1">
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="api-error-modal-ok-btn" class="btn btn-primary px-6 py-2">我知道了</button>
             </div>
         </div>
     </div>
@@ -2223,21 +2329,12 @@
         // JPEG compression quality (0.0 to 1.0).
         const JPEG_QUALITY = 0.8; 
 
-        // Firebase configuration.
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-  apiKey: "AIzaSyAoZoNZv8J5JIj5qTlh_U0zZqPsJKUEei8",
-  authDomain: "classtools-9664c.firebaseapp.com",
-  projectId: "classtools-9664c",
-  storageBucket: "classtools-9664c.firebasestorage.app",
-  messagingSenderId: "92525441781",
-  appId: "1:92525441781:web:9a6cf772ebb8fc14f88bbc"
-};
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app); 
-        const db = getFirestore(app);
+        // Firebase configuration - will be initialized later
+        let firebaseConfig = null;
+        let app = null;
+        let auth = null;
+        let db = null;
+        let isFirebaseConfigApplied = false; // Track if config has been applied
 
         // Use __app_id for the base Firestore path.
         const baseAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-classroom-app';
@@ -2676,9 +2773,40 @@
         }
 
         /**
-         * Question Bank Management Functions
+         * Question Bank Management Functions (Classroom-specific)
          */
+        function getQuestionBankKey() {
+            return classroomCode ? `questionBanks_${classroomCode}` : 'questionBanks_default';
+        }
+
+        function loadQuestionBanksFromStorage() {
+            if (!classroomCode) return;
+            const key = getQuestionBankKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try {
+                    questionBanks = JSON.parse(stored);
+                } catch (e) {
+                    console.error('載入題庫失敗:', e);
+                    questionBanks = [];
+                }
+            } else {
+                questionBanks = [];
+            }
+        }
+
+        function saveQuestionBanksToStorage() {
+            if (!classroomCode) return;
+            const key = getQuestionBankKey();
+            try {
+                localStorage.setItem(key, JSON.stringify(questionBanks));
+            } catch (e) {
+                console.error('儲存題庫失敗:', e);
+            }
+        }
+
         function updateQuestionBankList() {
+            loadQuestionBanksFromStorage(); // Load from storage first
             const list = document.getElementById('question-bank-list');
             if (questionBanks.length === 0) {
                 list.innerHTML = '<div class="text-gray-500 text-sm italic text-center">目前沒有儲存的題庫</div>';
@@ -2754,6 +2882,8 @@
                 return;
             }
 
+            loadQuestionBanksFromStorage(); // Load latest from storage
+
             // Check if bank with same name exists
             const existingIndex = questionBanks.findIndex(bank => bank.name === name);
             if (existingIndex !== -1) {
@@ -2766,6 +2896,7 @@
                 questionBanks.push({ name: name, content: content });
             }
 
+            saveQuestionBanksToStorage(); // Save to storage
             updateQuestionBankList();
             showMessage(`題庫「${name}」儲存成功`, 'success');
             nameInput.value = ''; // Clear name input
@@ -2780,10 +2911,12 @@
         }
 
         function deleteQuestionBank(index) {
+            loadQuestionBanksFromStorage(); // Load latest from storage
             if (index >= 0 && index < questionBanks.length) {
                 const bankName = questionBanks[index].name;
                 if (confirm(`確定要刪除題庫「${bankName}」嗎？`)) {
                     questionBanks.splice(index, 1);
+                    saveQuestionBanksToStorage(); // Save to storage
                     updateQuestionBankList();
                     showMessage(`題庫「${bankName}」已刪除`, 'success');
                 }
@@ -2795,18 +2928,77 @@
         window.deleteQuestionBank = deleteQuestionBank;
 
         function clearAllQuestionBanks() {
-            questionBanks = [];
-            updateQuestionBankList();
+            if (!classroomCode) {
+                console.warn('無法清除題庫：教室代碼為空');
+                return;
+            }
+
+            // Store current classroom code for logging
+            const currentClassroom = classroomCode;
+
+            // Clear question banks from localStorage for current classroom only
+            const mcKey = `questionBanks_${currentClassroom}`;
+            localStorage.removeItem(mcKey);
+            console.log(`已刪除選擇題題庫: ${mcKey}`);
+
+            // Clear sequencing banks
+            const seqKey = `sequencingBanks_${currentClassroom}`;
+            localStorage.removeItem(seqKey);
+            console.log(`已刪除排序題題庫: ${seqKey}`);
+
+            // Clear matching banks
+            const matchKey = `matchingBanks_${currentClassroom}`;
+            localStorage.removeItem(matchKey);
+            console.log(`已刪除配對題題庫: ${matchKey}`);
 
             // Clear reading comprehension question banks
+            const readingKey = `readingQuestionBanks_${currentClassroom}`;
+            localStorage.removeItem(readingKey);
+            console.log(`已刪除閱讀測驗題庫: ${readingKey}`);
+
+            // Clear memory arrays (these will be reset when entering another classroom)
+            questionBanks = [];
+            sequencingQuestionBanks = [];
+            matchingQuestionBanks = [];
             readingQuestionBanks = [];
-            localStorage.removeItem('readingQuestionBanks');
-            updateReadingBankList();
+
+            console.log(`✓ 已完全清除教室 ${currentClassroom} 的所有題庫，其他教室題庫不受影響`);
         }
 
         // ==================== Sequencing Question Bank Functions ====================
 
+        function getSequencingBankKey() {
+            return classroomCode ? `sequencingBanks_${classroomCode}` : 'sequencingBanks_default';
+        }
+
+        function loadSequencingBanksFromStorage() {
+            if (!classroomCode) return;
+            const key = getSequencingBankKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try {
+                    sequencingQuestionBanks = JSON.parse(stored);
+                } catch (e) {
+                    console.error('載入排序題庫失敗:', e);
+                    sequencingQuestionBanks = [];
+                }
+            } else {
+                sequencingQuestionBanks = [];
+            }
+        }
+
+        function saveSequencingBanksToStorage() {
+            if (!classroomCode) return;
+            const key = getSequencingBankKey();
+            try {
+                localStorage.setItem(key, JSON.stringify(sequencingQuestionBanks));
+            } catch (e) {
+                console.error('儲存排序題庫失敗:', e);
+            }
+        }
+
         function updateSequencingBankList() {
+            loadSequencingBanksFromStorage(); // Load from storage first
             const list = document.getElementById('seq-bank-list');
             if (sequencingQuestionBanks.length === 0) {
                 list.innerHTML = '<div class="text-gray-500 text-sm italic text-center">目前沒有儲存的題庫</div>';
@@ -2851,6 +3043,7 @@
                 const question = '排序題';
                 const items = lines.join('\n');
 
+                loadSequencingBanksFromStorage(); // Load latest from storage
                 const existingIndex = sequencingQuestionBanks.findIndex(bank => bank.name === fileName);
                 if (existingIndex !== -1) {
                     if (confirm(`題庫「${fileName}」已存在，是否要覆蓋？`)) {
@@ -2862,6 +3055,7 @@
                     sequencingQuestionBanks.push({ name: fileName, question: question, items: items });
                 }
 
+                saveSequencingBanksToStorage(); // Save to storage
                 updateSequencingBankList();
                 showMessage(`題庫「${fileName}」載入成功`, 'success');
                 fileInput.value = '';
@@ -2892,6 +3086,7 @@
                 return;
             }
 
+            loadSequencingBanksFromStorage(); // Load latest from storage
             const existingIndex = sequencingQuestionBanks.findIndex(bank => bank.name === name);
             if (existingIndex !== -1) {
                 if (confirm(`題庫「${name}」已存在，是否要覆蓋？`)) {
@@ -2903,6 +3098,7 @@
                 sequencingQuestionBanks.push({ name: name, question: question, items: items });
             }
 
+            saveSequencingBanksToStorage(); // Save to storage
             updateSequencingBankList();
             showMessage(`題庫「${name}」儲存成功`, 'success');
             nameInput.value = '';
@@ -2917,10 +3113,12 @@
         }
 
         function deleteSequencingBank(index) {
+            loadSequencingBanksFromStorage(); // Load latest from storage
             if (index >= 0 && index < sequencingQuestionBanks.length) {
                 const bankName = sequencingQuestionBanks[index].name;
                 if (confirm(`確定要刪除題庫「${bankName}」嗎？`)) {
                     sequencingQuestionBanks.splice(index, 1);
+                    saveSequencingBanksToStorage(); // Save to storage
                     updateSequencingBankList();
                     showMessage(`題庫「${bankName}」已刪除`, 'success');
                 }
@@ -2929,7 +3127,38 @@
 
         // ==================== Matching Question Bank Functions ====================
 
+        function getMatchingBankKey() {
+            return classroomCode ? `matchingBanks_${classroomCode}` : 'matchingBanks_default';
+        }
+
+        function loadMatchingBanksFromStorage() {
+            if (!classroomCode) return;
+            const key = getMatchingBankKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try {
+                    matchingQuestionBanks = JSON.parse(stored);
+                } catch (e) {
+                    console.error('載入配對題庫失敗:', e);
+                    matchingQuestionBanks = [];
+                }
+            } else {
+                matchingQuestionBanks = [];
+            }
+        }
+
+        function saveMatchingBanksToStorage() {
+            if (!classroomCode) return;
+            const key = getMatchingBankKey();
+            try {
+                localStorage.setItem(key, JSON.stringify(matchingQuestionBanks));
+            } catch (e) {
+                console.error('儲存配對題庫失敗:', e);
+            }
+        }
+
         function updateMatchingBankList() {
+            loadMatchingBanksFromStorage(); // Load from storage first
             const list = document.getElementById('match-bank-list');
             if (matchingQuestionBanks.length === 0) {
                 list.innerHTML = '<div class="text-gray-500 text-sm italic text-center">目前沒有儲存的題庫</div>';
@@ -2974,6 +3203,7 @@
                 const question = '配對題';
                 const pairs = lines.join('\n');
 
+                loadMatchingBanksFromStorage(); // Load latest from storage
                 const existingIndex = matchingQuestionBanks.findIndex(bank => bank.name === fileName);
                 if (existingIndex !== -1) {
                     if (confirm(`題庫「${fileName}」已存在，是否要覆蓋？`)) {
@@ -2985,6 +3215,7 @@
                     matchingQuestionBanks.push({ name: fileName, question: question, pairs: pairs });
                 }
 
+                saveMatchingBanksToStorage(); // Save to storage
                 updateMatchingBankList();
                 showMessage(`題庫「${fileName}」載入成功`, 'success');
                 fileInput.value = '';
@@ -3015,6 +3246,7 @@
                 return;
             }
 
+            loadMatchingBanksFromStorage(); // Load latest from storage
             const existingIndex = matchingQuestionBanks.findIndex(bank => bank.name === name);
             if (existingIndex !== -1) {
                 if (confirm(`題庫「${name}」已存在，是否要覆蓋？`)) {
@@ -3026,6 +3258,7 @@
                 matchingQuestionBanks.push({ name: name, question: question, pairs: pairs });
             }
 
+            saveMatchingBanksToStorage(); // Save to storage
             updateMatchingBankList();
             showMessage(`題庫「${name}」儲存成功`, 'success');
             nameInput.value = '';
@@ -3040,10 +3273,12 @@
         }
 
         function deleteMatchingBank(index) {
+            loadMatchingBanksFromStorage(); // Load latest from storage
             if (index >= 0 && index < matchingQuestionBanks.length) {
                 const bankName = matchingQuestionBanks[index].name;
                 if (confirm(`確定要刪除題庫「${bankName}」嗎？`)) {
                     matchingQuestionBanks.splice(index, 1);
+                    saveMatchingBanksToStorage(); // Save to storage
                     updateMatchingBankList();
                     showMessage(`題庫「${bankName}」已刪除`, 'success');
                 }
@@ -5086,6 +5321,99 @@
             aiSettingsModal.classList.add('hidden');
         }
 
+        /**
+         * Show API error modal with detailed error message in Chinese
+         */
+        function showAPIErrorModal(error, response = null) {
+            const errorMessageEl = document.getElementById('api-error-message');
+            const errorSolutionsEl = document.getElementById('api-error-solutions');
+
+            let errorMessage = '';
+            let solutions = [];
+
+            // Determine error type and provide Chinese explanation
+            if (response && !response.ok) {
+                const statusCode = response.status;
+
+                if (statusCode === 400) {
+                    errorMessage = 'API 請求格式錯誤或 API Key 無效';
+                    solutions = [
+                        '請檢查您的 API Key 是否正確',
+                        '請確認 API Key 是否已啟用',
+                        '請到右上角齒輪圖示重新設定 API Key'
+                    ];
+                } else if (statusCode === 401) {
+                    errorMessage = 'API Key 驗證失敗，無法存取 API 服務';
+                    solutions = [
+                        '您的 API Key 可能無效或已過期',
+                        '請到 Google AI Studio 確認 API Key 狀態',
+                        '請到右上角齒輪圖示重新設定正確的 API Key'
+                    ];
+                } else if (statusCode === 403) {
+                    errorMessage = 'API Key 沒有權限使用此服務';
+                    solutions = [
+                        '請確認 API Key 是否有 Gemini API 的使用權限',
+                        '請檢查 API Key 是否已超過使用額度',
+                        '請到 Google AI Studio 檢查專案設定'
+                    ];
+                } else if (statusCode === 429) {
+                    errorMessage = 'API 請求次數超過限制';
+                    solutions = [
+                        '您已超過 API 的使用次數限制',
+                        '請稍後再試，或升級您的 API 方案',
+                        '如使用免費方案，請等待配額重置（通常為每分鐘重置）'
+                    ];
+                } else if (statusCode === 500 || statusCode === 503) {
+                    errorMessage = 'API 服務暫時無法使用';
+                    solutions = [
+                        'Google API 伺服器目前發生問題',
+                        '請稍後再試',
+                        '如持續發生問題，請查看 Google API 服務狀態'
+                    ];
+                } else {
+                    errorMessage = `API 請求失敗（錯誤代碼：${statusCode}）`;
+                    solutions = [
+                        '請檢查網路連線是否正常',
+                        '請確認 API Key 設定是否正確',
+                        '請稍後再試'
+                    ];
+                }
+            } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage = '無法連接到 API 服務';
+                solutions = [
+                    '請檢查您的網路連線是否正常',
+                    '請確認防火牆或網路設定是否阻擋了 API 請求',
+                    '請稍後再試'
+                ];
+            } else if (error.message.includes('API Key')) {
+                errorMessage = 'API Key 設定有誤';
+                solutions = [
+                    '請到右上角齒輪圖示設定 API Key',
+                    '請確認 API Key 格式正確（無多餘空格或字元）',
+                    '請到 Google AI Studio 取得有效的 API Key'
+                ];
+            } else {
+                errorMessage = error.message || 'AI 生成過程發生未知錯誤';
+                solutions = [
+                    '請檢查網路連線',
+                    '請確認 API Key 設定正確',
+                    '請稍後再試',
+                    '如持續發生問題，請聯繫技術支援'
+                ];
+            }
+
+            // Update modal content
+            errorMessageEl.textContent = errorMessage;
+            errorSolutionsEl.innerHTML = solutions.map(solution => `<li>${solution}</li>`).join('');
+
+            // Show modal
+            document.getElementById('api-error-modal').classList.remove('hidden');
+        }
+
+        function hideAPIErrorModal() {
+            document.getElementById('api-error-modal').classList.add('hidden');
+        }
+
         function saveAISettings() {
             aiSettings.aiSource = aiSourceSelect.value;
             aiSettings.geminiApiKey = geminiApiKeyInput.value.trim();
@@ -5101,15 +5429,15 @@
                     const parsedSettings = JSON.parse(savedSettings);
                     if (parsedSettings.aiSource) aiSettings.aiSource = parsedSettings.aiSource;
                     // MODIFIED: If geminiApiKey is empty after loading, set default.
-                    aiSettings.geminiApiKey = parsedSettings.geminiApiKey || 'AIzaSyBrVKhaUXzUCdfGCGixLlivPuhyOiKDFE0'; 
+                    aiSettings.geminiApiKey = parsedSettings.geminiApiKey || '12345678'; 
                 } catch (e) {
                     console.error("Failed to parse AI settings from localStorage:", e);
                     // If parsing fails, set default API key
-                    aiSettings.geminiApiKey = 'AIzaSyBrVKhaUXzUCdfGCGixLlivPuhyOiKDFE0';
+                    aiSettings.geminiApiKey = '12345678';
                 }
             } else {
                 // If no settings are saved at all, set default API key
-                aiSettings.geminiApiKey = 'AIzaSyBrVKhaUXzUCdfGCGixLlivPuhyOiKDFE0';
+                aiSettings.geminiApiKey = '12345678';
             }
         }
 
@@ -5383,7 +5711,10 @@
                     
                     console.log(`[Teacher] Cleared all data for classroom: ${classroomCode}`);
                 }
-                
+
+                // Remove classroom code from recent classrooms list
+                removeRecentClassroom(classroomCode);
+
                 classroomCode = null; // Clear the classroom code after ending session
                 localStorage.removeItem('teacherClassroomCode'); // Clear from local storage
 
@@ -5431,6 +5762,63 @@
                 console.error("結束課程並清空資料失敗:", error);
                 showMessage("結束課程失敗，請檢查網路連線或聯繫管理員。", "error");
             }
+        }
+
+        /**
+         * (Teacher) Leave classroom without deleting data - just clear local state and return to entry view
+         */
+        async function leaveClassroom() {
+            if (!confirm('確定要暫離教室嗎？教室資料會保留，您稍後可以重新進入。')) {
+                return;
+            }
+
+            showMessage('正在離開教室...', 'info');
+
+            // Unsubscribe from all listeners
+            if (interactionModeUnsubscribe) interactionModeUnsubscribe();
+            if (studentResponsesUnsubscribe) studentResponsesUnsubscribe();
+            if (classroomPresenceUnsubscribe) {
+                classroomPresenceUnsubscribe();
+                classroomPresenceUnsubscribe = null;
+            }
+            interactionModeUnsubscribe = studentResponsesUnsubscribe = null;
+
+            // Clear local state (but don't delete Firestore data)
+            classroomCode = null;
+            localStorage.removeItem('teacherClassroomCode'); // Clear from local storage
+
+            studentName = null;
+            currentRole = null;
+            currentInteractionMode = null;
+            allStudentResponses = [];
+            activeStudentNames = [];
+            lastSelectedStudentCard = null;
+            lastSelectedModalStudent = null;
+            isResponsePaused = false;
+            currentMultipleChoiceQuestions = null;
+
+            // Clear question bank arrays from memory
+            questionBanks = [];
+            sequencingQuestionBanks = [];
+            matchingQuestionBanks = [];
+            readingQuestionBanks = [];
+
+            // Clear UI
+            document.getElementById('student-responses-container').innerHTML = '<p class="text-gray-500 text-center col-span-full">正在等待學生作答...</p>';
+            document.getElementById('active-student-count').textContent = '0';
+            document.getElementById('teacher-image-status').textContent = '目前沒有背景圖片。可選擇檔案或直接貼上(Ctrl+V)。';
+            document.getElementById('teacher-image-preview').src = '';
+            document.getElementById('teacher-image-preview-container').classList.add('hidden');
+
+            clearDispatchSettings();
+            teacherUploadedBackgroundImageDataURL = null;
+            updateTeacherPauseButtonUI();
+
+            // Return to entry view
+            showView('entry');
+            showMessage('已離開教室，資料已保留。', 'success');
+
+            console.log('[Teacher] Left classroom without deleting data');
         }
 
         // NEW: Pause/Resume Response Logic
@@ -5606,11 +5994,70 @@
 
 
         function setupEventListeners() {
+            // Firebase settings modal
+            document.getElementById('firebase-settings-btn').addEventListener('click', () => {
+                const modal = document.getElementById('firebase-settings-modal');
+                modal.classList.remove('hidden');
+
+                // Load existing config if available
+                const savedConfig = localStorage.getItem('firebaseConfig') || localStorage.getItem('firebaseConfigDraft') || '';
+                document.getElementById('firebase-config-textarea').value = savedConfig;
+
+                // Enable generate URL button if config is already applied
+                if (isFirebaseConfigApplied && savedConfig) {
+                    document.getElementById('generate-firebase-url-btn').disabled = false;
+                } else {
+                    document.getElementById('generate-firebase-url-btn').disabled = true;
+                }
+
+                // Hide QR code container and URL info when opening modal
+                document.getElementById('firebase-qrcode-container').classList.add('hidden');
+                document.getElementById('firebase-qrcode').innerHTML = '';
+                document.getElementById('firebase-url-info').classList.add('hidden');
+            });
+
+            document.getElementById('firebase-settings-modal-close-btn').addEventListener('click', () => {
+                document.getElementById('firebase-settings-modal').classList.add('hidden');
+            });
+
+            document.getElementById('apply-firebase-settings-btn').addEventListener('click', handleApplyFirebaseSettings);
+            document.getElementById('generate-firebase-url-btn').addEventListener('click', handleGenerateFirebaseUrl);
+            document.getElementById('download-qrcode-btn').addEventListener('click', downloadFirebaseQRCode);
+            document.getElementById('clear-firebase-config-btn').addEventListener('click', handleClearFirebaseConfig);
+
+            // Copy URL buttons
+            document.getElementById('copy-short-url-btn').addEventListener('click', () => {
+                const shortUrl = document.getElementById('firebase-short-url-display').value;
+                navigator.clipboard.writeText(shortUrl).then(() => {
+                    showFirebaseCopyMessage("短網址已複製！", false);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const input = document.getElementById('firebase-short-url-display');
+                    input.select();
+                    document.execCommand('copy');
+                    showFirebaseCopyMessage("短網址已複製！", false);
+                });
+            });
+
+            document.getElementById('copy-original-url-btn').addEventListener('click', () => {
+                const originalUrl = document.getElementById('firebase-original-url-display').value;
+                navigator.clipboard.writeText(originalUrl).then(() => {
+                    showFirebaseCopyMessage("原始網址已複製！", false);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const input = document.getElementById('firebase-original-url-display');
+                    input.select();
+                    document.execCommand('copy');
+                    showFirebaseCopyMessage("原始網址已複製！", false);
+                });
+            });
+
             // Entry screen.
             document.getElementById('teacher-entry-btn').addEventListener('click', () => {
                 // Check if passwd=no parameter is present in URL
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('passwd') === 'no') {
+                    loadRecentClassrooms(); // Load recent classrooms for teacher
                     showView('teacherClassroomCode');
                 } else {
                     document.getElementById('teacher-password-modal').classList.remove('hidden');
@@ -5632,12 +6079,21 @@
                     document.getElementById('end-class-monitor-button-text').textContent = `下課 教室代碼: ${classroomCode}`; // Update button text for monitor view
                     localStorage.setItem('teacherClassroomCode', classroomCode); // Persist teacher's classroom code
 
+                    // Save classroom code to recent classrooms
+                    saveRecentClassroom(classroomCode);
+
                     // Set initial classroom state in Firestore, including isPaused: false
                     const controlRef = doc(db, 'artifacts', baseAppId, 'public', 'data', 'classrooms', classroomCode, 'settings', 'control');
-                    await setDoc(controlRef, { active_mode: 'waiting', teacherId: userId, backgroundImage: null, isPaused: false, multiple_choice_questions: null }, { merge: true }); 
+                    await setDoc(controlRef, { active_mode: 'waiting', teacherId: userId, backgroundImage: null, isPaused: false, multiple_choice_questions: null }, { merge: true });
                     isResponsePaused = false; // Initialize local state
                     updateTeacherPauseButtonUI(); // Update button UI
                     currentMultipleChoiceQuestions = null; // Ensure this is cleared on new class
+
+                    // Load question banks for this classroom
+                    loadQuestionBanksFromStorage();
+                    loadSequencingBanksFromStorage();
+                    loadMatchingBanksFromStorage();
+                    loadReadingBanksFromStorage();
 
                     listenToClassroomPresence(); // Ensure presence listener is active
                     showView('teacherMenu');
@@ -5649,7 +6105,15 @@
             document.getElementById('teacher-classroom-code-input').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') document.getElementById('teacher-classroom-code-submit-btn').click();
             });
-            
+
+            // Recent classrooms select change event (Teacher)
+            document.getElementById('teacher-recent-classrooms-select').addEventListener('change', (e) => {
+                const selectedCode = e.target.value;
+                if (selectedCode) {
+                    document.getElementById('teacher-classroom-code-input').value = selectedCode;
+                }
+            });
+
             // Student name and classroom code submission.
             document.getElementById('submit-name-btn').addEventListener('click', async () => {
                 const studentClassroomCode = document.getElementById('student-classroom-code-input').value.trim();
@@ -5674,6 +6138,7 @@
                         studentName = name;
                         document.getElementById('user-id-display').textContent = `${userId} (${studentName})`;
                         document.getElementById('student-welcome-msg').textContent = `你好，${studentName}！`;
+
                         listenToInteractionMode();
                         listenToPeerReviewStatus(); // NEW: Listen for peer review status
                         showView('studentWaiting');
@@ -5703,6 +6168,10 @@
             // Open Multiple Choice Settings from B menu
             document.getElementById('open-multiple-choice-settings-btn').addEventListener('click', () => {
                 document.getElementById('choice-sequencing-matching-menu-modal').classList.add('hidden');
+
+                // Update question bank list for current classroom
+                updateQuestionBankList();
+
                 // Initialize modal state based on current customMultipleChoiceQuestions
                 const mcQuestionTypeNone = document.querySelector('input[name="mcQuestionType"][value="none"]');
                 const mcQuestionTypeCustom = document.querySelector('input[name="mcQuestionType"][value="custom"]');
@@ -5730,12 +6199,20 @@
             // Open Sequencing Settings from B menu
             document.getElementById('open-sequencing-settings-btn').addEventListener('click', () => {
                 document.getElementById('choice-sequencing-matching-menu-modal').classList.add('hidden');
+
+                // Update sequencing bank list for current classroom
+                updateSequencingBankList();
+
                 document.getElementById('sequencing-settings-modal').classList.remove('hidden');
             });
 
             // Open Matching Settings from B menu
             document.getElementById('open-matching-settings-btn').addEventListener('click', () => {
                 document.getElementById('choice-sequencing-matching-menu-modal').classList.add('hidden');
+
+                // Update matching bank list for current classroom
+                updateMatchingBankList();
+
                 document.getElementById('matching-settings-modal').classList.remove('hidden');
             });
 
@@ -6165,7 +6642,13 @@
                     };
                     const apiKey = (aiSettings.aiSource === 'gemini-custom' && aiSettings.geminiApiKey) ? aiSettings.geminiApiKey : "";
                     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+
+                    if (!response.ok) {
+                        aiLoadingSpinner.classList.add('hidden');
+                        showAPIErrorModal(new Error(`API request failed: ${response.status}`), response);
+                        return;
+                    }
+
                     const result = await response.json();
                     aiLoadingSpinner.classList.add('hidden');
                     const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -6182,7 +6665,7 @@
                 } catch (error) {
                     console.error("AI 文字分析失敗:", error);
                     aiLoadingSpinner.classList.add('hidden');
-                    aiSummaryResultList.innerHTML = '<li class="error-message">AI 分析失敗，請檢查 API Key 或網路連線。</li>';
+                    showAPIErrorModal(error);
                 }
             });
             document.getElementById('ai-summary-modal-close-btn').addEventListener('click', () => document.getElementById('ai-summary-modal').classList.add('hidden'));
@@ -6190,6 +6673,10 @@
             aiSettingsModalCloseBtn.addEventListener('click', hideAISettingsModal);
             saveAiSettingsBtn.addEventListener('click', saveAISettings);
             aiSourceSelect.addEventListener('change', (e) => geminiApiKeyGroup.classList.toggle('hidden', e.target.value !== 'gemini-custom'));
+
+            // API Error Modal listeners
+            document.getElementById('api-error-modal-close-btn').addEventListener('click', hideAPIErrorModal);
+            document.getElementById('api-error-modal-ok-btn').addEventListener('click', hideAPIErrorModal);
 
             // New: URL/HTML Dispatch Settings Modal listeners.
             document.getElementById('url-dispatch-settings-btn').addEventListener('click', showUrlDispatchSettingsModal);
@@ -6353,6 +6840,9 @@
             document.getElementById('end-class-session-menu-btn').addEventListener('click', endClassSession);
             document.getElementById('end-class-session-monitor-btn').addEventListener('click', endClassSession);
 
+            // Leave Classroom Button (without deleting data)
+            document.getElementById('leave-classroom-btn').addEventListener('click', leaveClassroom);
+
             // NEW: Multiple Choice Settings Modal Listeners
             const multipleChoiceSettingsModal = document.getElementById('multiple-choice-settings-modal');
             const multipleChoiceSettingsModalCloseBtn = document.getElementById('multiple-choice-settings-modal-close-btn');
@@ -6406,6 +6896,7 @@
                 if (password === 'tpet') {
                     teacherPasswordModal.classList.add('hidden');
                     teacherPasswordInput.value = '';
+                    loadRecentClassrooms(); // Load recent classrooms for teacher
                     showView('teacherClassroomCode');
                 } else {
                     showMessage('密碼錯誤！', 'error');
@@ -6477,21 +6968,22 @@
                 題目,正確答案(1-4),選項1,選項2,選項3,選項4
                 請勿包含題號、任何多餘的說明文字或程式碼區塊標記。`;
 
+                let apiResponse = null;
                 try {
                     const payload = {
                         contents: [{ role: "user", parts: [{ text: prompt }] }],
                         generationConfig: { temperature: 0.7 } // Adjust temperature for creativity
                     };
                     const apiKey = aiSettings.geminiApiKey;
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
-                    if (!response.ok) {
-                        throw new Error(`AI API request failed with status ${response.status}`);
+                    if (!apiResponse.ok) {
+                        throw new Error(`AI API request failed with status ${apiResponse.status}`);
                     }
 
-                    const result = await response.json();
+                    const result = await apiResponse.json();
                     const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
+
                     if (generatedText) {
                         // Append to existing content, adding a newline if needed
                         const existingText = customMcQuestionsTextarea.value.trim();
@@ -6503,7 +6995,7 @@
 
                 } catch (error) {
                     console.error("AI 題目生成失敗:", error);
-                    showMessage('AI 題目生成失敗，請檢查 API Key 或網路連線。', 'error');
+                    showAPIErrorModal(error, apiResponse);
                 } finally {
                     // Hide loading state
                     aiGenerateMcBtn.disabled = false;
@@ -6547,19 +7039,20 @@
 請按正確順序列出，每個項目一行，不要有題號或任何標記。
 只需提供項目內容，不要包含說明文字或程式碼區塊標記。`;
 
+                let apiResponse = null;
                 try {
                     const payload = {
                         contents: [{ role: "user", parts: [{ text: prompt }] }],
                         generationConfig: { temperature: 0.7 }
                     };
                     const apiKey = aiSettings.geminiApiKey;
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
-                    if (!response.ok) {
-                        throw new Error(`AI API request failed with status ${response.status}`);
+                    if (!apiResponse.ok) {
+                        throw new Error(`AI API request failed with status ${apiResponse.status}`);
                     }
 
-                    const result = await response.json();
+                    const result = await apiResponse.json();
                     const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                     if (generatedText) {
@@ -6572,7 +7065,7 @@
 
                 } catch (error) {
                     console.error("AI 排序題生成失敗:", error);
-                    showMessage('AI 排序題生成失敗，請檢查 API Key 或網路連線。', 'error');
+                    showAPIErrorModal(error, apiResponse);
                 } finally {
                     // Hide loading state
                     aiGenerateSeqBtn.disabled = false;
@@ -6617,19 +7110,20 @@
 不要有題號、說明文字或程式碼區塊標記。
 直接提供配對內容，每行一組。`;
 
+                let apiResponse = null;
                 try {
                     const payload = {
                         contents: [{ role: "user", parts: [{ text: prompt }] }],
                         generationConfig: { temperature: 0.7 }
                     };
                     const apiKey = aiSettings.geminiApiKey;
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
-                    if (!response.ok) {
-                        throw new Error(`AI API request failed with status ${response.status}`);
+                    if (!apiResponse.ok) {
+                        throw new Error(`AI API request failed with status ${apiResponse.status}`);
                     }
 
-                    const result = await response.json();
+                    const result = await apiResponse.json();
                     const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
                     if (generatedText) {
@@ -6642,7 +7136,7 @@
 
                 } catch (error) {
                     console.error("AI 配對題生成失敗:", error);
-                    showMessage('AI 配對題生成失敗，請檢查 API Key 或網路連線。', 'error');
+                    showAPIErrorModal(error, apiResponse);
                 } finally {
                     // Hide loading state
                     aiGenerateMatchBtn.disabled = false;
@@ -7399,9 +7893,565 @@
             });
         }
 
+        // --- Firebase Configuration Functions ---
+        /**
+         * Parse and apply Firebase configuration string
+         */
+        function applyFirebaseConfig(rawConfigString, suppressMessage = false) {
+            try {
+                // Step 1: Clean up the input string
+                let cleanedConfigString = rawConfigString.trim();
+
+                // Step 2: Remove trailing comma if exists
+                cleanedConfigString = cleanedConfigString.replace(/,\s*$/, "");
+
+                // Step 3: Replace newlines with spaces (preserve existing commas)
+                cleanedConfigString = cleanedConfigString.replace(/\s*\n\s*/g, ' ');
+
+                // Step 4: Clean up multiple spaces
+                cleanedConfigString = cleanedConfigString.replace(/\s+/g, ' ');
+
+                // Step 5: Add quotes around property names
+                // Only match property names at the start or after a comma
+                // Pattern: (start of string or comma+spaces) + word + spaces + colon
+                cleanedConfigString = cleanedConfigString.replace(/(^|,\s*)(\w+)\s*:/g, '$1"$2":');
+
+                // Step 6: Build valid JSON string
+                const jsonString = `{${cleanedConfigString}}`;
+
+                console.log('Parsed JSON string:', jsonString); // For debugging
+
+                firebaseConfig = JSON.parse(jsonString);
+
+                if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.authDomain) {
+                    throw new Error("設定檔中缺少必要欄位 (apiKey, projectId, authDomain)");
+                }
+
+                // Initialize Firebase with the new config
+                initializeFirebase();
+
+                if (!suppressMessage) {
+                    showFirebaseCopyMessage("設定已成功套用！", false);
+                }
+
+                return true;
+            } catch (error) {
+                console.error("Firebase 設定檔處理失敗:", error);
+                if (!suppressMessage) {
+                    showFirebaseCopyMessage(`設定套用失敗: ${error.message}\n請檢查格式是否正確。`, true);
+                }
+                return false;
+            }
+        }
+
+        /**
+         * Initialize Firebase with the current configuration
+         */
+        function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                console.log("Firebase 初始化成功");
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+                throw error;
+            }
+        }
+
+        /**
+         * Setup Firebase configuration from various sources
+         * 優先順序：localStorage > URL 參數 > firebase-config.js > 原始碼硬編碼
+         */
+        function setupFirebaseConfig() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const configParam = urlParams.get('config');
+            let rawConfigString = localStorage.getItem('firebaseConfig');
+            let configSource = "localStorage";
+
+            // Priority 1: Check URL parameter
+            if (!rawConfigString && configParam) {
+                try {
+                    rawConfigString = atob(configParam);
+                    configSource = "URL";
+                } catch (e) {
+                    console.error("URL config base64 解碼失敗:", e);
+                    document.body.innerHTML = `<div class="text-center p-8 text-red-600"><h1 class="text-2xl font-bold">設定檔錯誤</h1><p>Firebase 設定檔錯誤，請點擊右上角 'Firebase 設定' 按鈕重新設定。</p></div>`;
+                    return false;
+                }
+            }
+
+            // Priority 2: Check external firebase-config.js
+            if (!rawConfigString && typeof __firebase_config !== 'undefined') {
+                try {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                    initializeFirebase();
+                    isFirebaseConfigApplied = true;
+                    console.log("已從外部 firebase-config.js 自動載入並套用 Firebase 設定。");
+                    return true;
+                } catch (error) {
+                    console.error("外部 firebase-config.js 解析失敗:", error);
+                }
+            }
+
+            // Apply config if found
+            if (rawConfigString) {
+                try {
+                    const applySuccess = applyFirebaseConfig(rawConfigString, true);
+                    if (applySuccess) {
+                        isFirebaseConfigApplied = true;
+                        console.log(`已從 ${configSource} 自動載入並套用 Firebase 設定。`);
+
+                        // If from URL, save to localStorage
+                        if (configSource === "URL") {
+                            localStorage.setItem('firebaseConfig', rawConfigString);
+                            console.log("已將 URL 設定儲存至 localStorage");
+                        }
+                        return true;
+                    }
+                } catch (error) {
+                    console.error("套用 Firebase 設定失敗:", error);
+                }
+            }
+
+            // ============================================================================
+            // 【Firebase 設定區】- 備用設定（優先權最低）
+            // ============================================================================
+            // 使用方式：將下方六行 "demo" 直接取代為您的 Firebase 設定值
+            //
+            // 1. 前往 Firebase Console > 專案設定 > 一般設定
+            // 2. 在「您的應用程式」區塊找到 firebaseConfig
+            // 3. 複製對應的值，取代下方的 "demo"
+            //
+            // 優先順序：localStorage > URL 參數 > firebase-config.js > 此設定
+            // 如果上述來源都沒有設定，才會使用這裡的值
+            // ============================================================================
+            firebaseConfig = {
+                apiKey: "AIzaSyC_Y1WgUfK2nAqEFda2fySEZYp5flYd54A",
+  authDomain: "test-f7558.firebaseapp.com",
+  projectId: "test-f7558",
+  storageBucket: "test-f7558.firebasestorage.app",
+  messagingSenderId: "672101127125",
+  appId: "1:672101127125:web:65c409c3098b7c5a4b235c"
+            };
+            // ============================================================================
+
+            // Check if this is a valid config (not demo)
+            if (firebaseConfig.apiKey !== "demo") {
+                try {
+                    initializeFirebase();
+                    isFirebaseConfigApplied = true;
+                    console.log("已從原始碼中的備用設定自動載入並套用 Firebase 設定。");
+                    return true;
+                } catch (error) {
+                    console.error("原始碼中的 Firebase 設定初始化失敗:", error);
+                }
+            }
+
+            // No valid config found - return 'demo' to skip Firebase initialization
+            console.warn("未找到 Firebase 設定，請使用右上角按鈕進行設定");
+            // Don't initialize Firebase with demo config, just return 'demo'
+            return 'demo';
+        }
+
+        /**
+         * Show copy message in the Firebase settings modal
+         */
+        function showFirebaseCopyMessage(message, isError = false) {
+            const msgElement = document.getElementById('firebase-copy-success-msg');
+            msgElement.textContent = message;
+            msgElement.classList.remove('hidden');
+
+            if (isError) {
+                msgElement.classList.remove('text-green-500');
+                msgElement.classList.add('text-red-500');
+            } else {
+                msgElement.classList.remove('text-red-500');
+                msgElement.classList.add('text-green-500');
+            }
+
+            setTimeout(() => {
+                msgElement.classList.add('hidden');
+            }, 4000);
+        }
+
+        /**
+         * Handle apply settings button click
+         */
+        function handleApplyFirebaseSettings() {
+            const configContent = document.getElementById('firebase-config-textarea').value.trim();
+            if (!configContent) {
+                showFirebaseCopyMessage("請先貼上設定內容", true);
+                return;
+            }
+
+            localStorage.setItem('firebaseConfigDraft', configContent);
+
+            const applySuccess = applyFirebaseConfig(configContent);
+
+            if (applySuccess) {
+                isFirebaseConfigApplied = true;
+                document.getElementById('generate-firebase-url-btn').disabled = false;
+                localStorage.setItem('firebaseConfig', configContent);
+
+                // Close modal and reload to apply new config
+                document.getElementById('firebase-settings-modal').classList.add('hidden');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                isFirebaseConfigApplied = false;
+                document.getElementById('generate-firebase-url-btn').disabled = true;
+                localStorage.removeItem('firebaseConfig');
+            }
+        }
+
+        /**
+         * Generate short URL using a free URL shortener service
+         */
+        async function generateShortUrl(longUrl) {
+            try {
+                // Try is.gd first (free, no API key needed)
+                const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+                const data = await response.json();
+
+                if (data.shorturl) {
+                    console.log('短網址生成成功:', data.shorturl);
+                    return data.shorturl;
+                } else if (data.errormessage) {
+                    console.warn('is.gd 錯誤:', data.errormessage);
+                    // Fallback to TinyURL
+                    return await generateShortUrlTinyURL(longUrl);
+                }
+            } catch (error) {
+                console.warn('is.gd 失敗，嘗試 TinyURL:', error);
+                // Fallback to TinyURL
+                return await generateShortUrlTinyURL(longUrl);
+            }
+
+            // If all fails, return original URL
+            return longUrl;
+        }
+
+        /**
+         * Fallback: Generate short URL using TinyURL
+         */
+        async function generateShortUrlTinyURL(longUrl) {
+            try {
+                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                const shortUrl = await response.text();
+
+                if (shortUrl && shortUrl.startsWith('http')) {
+                    console.log('TinyURL 短網址生成成功:', shortUrl);
+                    return shortUrl;
+                }
+            } catch (error) {
+                console.error('TinyURL 也失敗:', error);
+            }
+
+            // Return original URL if all shorteners fail
+            console.warn('所有短網址服務都失敗，使用原始網址');
+            return longUrl;
+        }
+
+        /**
+         * Handle generate URL button click
+         */
+        let currentGeneratedUrl = ''; // Store current URL for QR code download
+        let currentShortUrl = ''; // Store short URL
+
+        async function handleGenerateFirebaseUrl() {
+            const configContent = document.getElementById('firebase-config-textarea').value.trim();
+
+            if (!configContent || !isFirebaseConfigApplied) {
+                showFirebaseCopyMessage("請先成功套用設定", true);
+                return;
+            }
+
+            try {
+                // Show loading message
+                showFirebaseCopyMessage("正在生成短網址，請稍候...", false);
+
+                const base64Config = btoa(configContent);
+                const newUrl = `${window.location.origin}${window.location.pathname}?config=${base64Config}&hideFirebaseBtn=true`;
+                currentGeneratedUrl = newUrl; // Store original URL
+
+                // Generate short URL
+                const shortUrl = await generateShortUrl(newUrl);
+                currentShortUrl = shortUrl; // Store short URL
+
+                // Copy short URL to clipboard
+                const tempInput = document.createElement('textarea');
+                tempInput.value = shortUrl;
+                tempInput.style.position = 'absolute';
+                tempInput.style.left = '-9999px';
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                tempInput.setSelectionRange(0, 99999);
+
+                let success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    console.error('無法自動複製:', err);
+                }
+
+                document.body.removeChild(tempInput);
+
+                if (success) {
+                    showFirebaseCopyMessage("短網址已複製到剪貼簿！", false);
+                } else {
+                    showFirebaseCopyMessage("複製網址失敗，請手動複製。", true);
+                }
+
+                // Display URLs in UI
+                document.getElementById('firebase-short-url-display').value = shortUrl;
+                document.getElementById('firebase-original-url-display').value = newUrl;
+                document.getElementById('firebase-url-info').classList.remove('hidden');
+
+                // Generate QR Code using short URL
+                generateFirebaseQRCode(shortUrl);
+
+            } catch (error) {
+                console.error("生成網址失敗:", error);
+                showFirebaseCopyMessage("生成網址失敗。", true);
+            }
+        }
+
+        /**
+         * Generate QR Code for the Firebase URL
+         */
+        function generateFirebaseQRCode(url) {
+            const qrcodeContainer = document.getElementById('firebase-qrcode');
+            const qrcodeContainerWrapper = document.getElementById('firebase-qrcode-container');
+
+            // Clear previous QR code
+            qrcodeContainer.innerHTML = '';
+
+            // Generate new QR code
+            try {
+                new QRCode(qrcodeContainer, {
+                    text: url,
+                    width: 256,
+                    height: 256,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                // Show QR code container
+                qrcodeContainerWrapper.classList.remove('hidden');
+
+                console.log('QR Code 已生成');
+            } catch (error) {
+                console.error('生成 QR Code 失敗:', error);
+                showFirebaseCopyMessage("生成 QR Code 失敗", true);
+            }
+        }
+
+        /**
+         * Download QR Code as image
+         */
+        function downloadFirebaseQRCode() {
+            const qrcodeContainer = document.getElementById('firebase-qrcode');
+            const canvas = qrcodeContainer.querySelector('canvas');
+
+            if (!canvas) {
+                showFirebaseCopyMessage("請先生成 QR Code", true);
+                return;
+            }
+
+            try {
+                // Convert canvas to blob and download
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'firebase-qrcode.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    showFirebaseCopyMessage("QR Code 已下載", false);
+                });
+            } catch (error) {
+                console.error('下載 QR Code 失敗:', error);
+                showFirebaseCopyMessage("下載 QR Code 失敗", true);
+            }
+        }
+
+        /**
+         * Handle clear Firebase configuration button click
+         */
+        function handleClearFirebaseConfig() {
+            if (confirm('確定要清除本地儲存的 Firebase 設定嗎？清除後需要重新整理頁面才會生效。')) {
+                // Clear all Firebase-related data from localStorage
+                localStorage.removeItem('firebaseConfig');
+                localStorage.removeItem('firebaseConfigDraft');
+
+                // Clear the textarea
+                document.getElementById('firebase-config-textarea').value = '';
+
+                // Show success message
+                showFirebaseCopyMessage("本地設定值已清除，請重新整理頁面", false);
+
+                // Disable generate URL button
+                document.getElementById('generate-firebase-url-btn').disabled = true;
+
+                // Hide URL info and QR code if visible
+                document.getElementById('firebase-url-info').classList.add('hidden');
+                document.getElementById('firebase-qrcode-container').classList.add('hidden');
+
+                console.log("Firebase 本地設定已清除");
+            }
+        }
+
+        /**
+         * Load recent classrooms from localStorage and populate teacher select dropdown
+         */
+        function loadRecentClassrooms() {
+            const recentClassroomsStr = localStorage.getItem('recentClassrooms');
+            if (!recentClassroomsStr) {
+                return;
+            }
+
+            try {
+                const recentClassrooms = JSON.parse(recentClassroomsStr);
+                if (!Array.isArray(recentClassrooms) || recentClassrooms.length === 0) {
+                    return;
+                }
+
+                // Get teacher elements
+                const container = document.getElementById('teacher-recent-classrooms-container');
+                const select = document.getElementById('teacher-recent-classrooms-select');
+
+                if (!container || !select) {
+                    return;
+                }
+
+                // Clear existing options except the first one
+                select.innerHTML = '<option value="">-- 選擇教室代碼 --</option>';
+
+                // Add classroom codes as options
+                recentClassrooms.forEach(code => {
+                    const option = document.createElement('option');
+                    option.value = code;
+                    option.textContent = code;
+                    select.appendChild(option);
+                });
+
+                container.classList.remove('hidden');
+            } catch (error) {
+                console.error('載入最近教室代碼失敗:', error);
+            }
+        }
+
+        /**
+         * Save classroom code to recent classrooms in localStorage
+         * @param {string} code - Classroom code to save
+         */
+        function saveRecentClassroom(code) {
+            if (!code) return;
+
+            try {
+                const recentClassroomsStr = localStorage.getItem('recentClassrooms');
+                let recentClassrooms = [];
+
+                if (recentClassroomsStr) {
+                    recentClassrooms = JSON.parse(recentClassroomsStr);
+                }
+
+                // Remove if already exists (to move to front)
+                recentClassrooms = recentClassrooms.filter(c => c !== code);
+
+                // Add to front
+                recentClassrooms.unshift(code);
+
+                // Keep only last 5
+                recentClassrooms = recentClassrooms.slice(0, 5);
+
+                localStorage.setItem('recentClassrooms', JSON.stringify(recentClassrooms));
+            } catch (error) {
+                console.error('保存最近教室代碼失敗:', error);
+            }
+        }
+
+        /**
+         * Remove classroom code from recent classrooms in localStorage
+         * @param {string} code - Classroom code to remove
+         */
+        function removeRecentClassroom(code) {
+            if (!code) return;
+
+            try {
+                const recentClassroomsStr = localStorage.getItem('recentClassrooms');
+                if (!recentClassroomsStr) {
+                    return;
+                }
+
+                let recentClassrooms = JSON.parse(recentClassroomsStr);
+
+                // Remove the code from the list
+                recentClassrooms = recentClassrooms.filter(c => c !== code);
+
+                // Save back to localStorage
+                if (recentClassrooms.length > 0) {
+                    localStorage.setItem('recentClassrooms', JSON.stringify(recentClassrooms));
+                } else {
+                    // If list is empty, remove the key entirely
+                    localStorage.removeItem('recentClassrooms');
+                }
+
+                console.log(`已從最近教室列表中刪除: ${code}`);
+            } catch (error) {
+                console.error('刪除最近教室代碼失敗:', error);
+            }
+        }
+
         // --- Initialization Function ---
         async function initialize() {
-            loadAISettings(); 
+            // Check if hideFirebaseBtn parameter is present in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('hideFirebaseBtn') === 'true') {
+                const firebaseBtn = document.getElementById('firebase-settings-btn');
+                if (firebaseBtn) {
+                    firebaseBtn.style.display = 'none';
+                    console.log('Firebase 設定按鈕已隱藏（因 URL 參數 hideFirebaseBtn=true）');
+                }
+            }
+
+            // Setup Firebase configuration first
+            const configResult = setupFirebaseConfig();
+            if (!configResult) {
+                console.error("Firebase 設定失敗");
+                return;
+            }
+
+            // Check if using demo config (no real Firebase setup)
+            if (configResult === 'demo') {
+                console.warn("未設定 Firebase，請點擊右上角「Firebase 設定」按鈕進行設定");
+                // Show entry view without Firebase initialization
+                showView('entry');
+
+                // Show warning message on the page
+                const entryView = document.getElementById('entry-view');
+                if (entryView && !document.getElementById('firebase-warning-banner')) {
+                    const warningBanner = document.createElement('div');
+                    warningBanner.id = 'firebase-warning-banner';
+                    warningBanner.className = 'fixed top-16 left-0 right-0 bg-yellow-100 border-b-2 border-yellow-400 p-3 text-center z-10';
+                    warningBanner.innerHTML = `
+                        <p class="text-yellow-800 font-semibold">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            尚未設定 Firebase，請點擊右上角「Firebase 設定」按鈕進行設定
+                        </p>
+                    `;
+                    document.body.insertBefore(warningBanner, document.body.firstChild);
+                }
+                return; // Stop initialization here
+            }
+
+            loadAISettings();
             loadDispatchSettings(); // Load saved combined dispatch settings
 
             onAuthStateChanged(auth, async user => {
@@ -7442,6 +8492,12 @@
                             customMultipleChoiceQuestions = [];
                         }
                         updateTeacherPauseButtonUI(); // Update button UI based on fetched state
+
+                        // Load question banks for this classroom
+                        loadQuestionBanksFromStorage();
+                        loadSequencingBanksFromStorage();
+                        loadMatchingBanksFromStorage();
+                        loadReadingBanksFromStorage();
 
                         listenToClassroomPresence(); // Ensure presence listener is established here and remains active
                         showView('teacherMenu');
@@ -8223,6 +9279,9 @@
          * Show reading comprehension settings modal
          */
         function showReadingComprehensionModal() {
+            // Update reading bank list for current classroom
+            updateReadingBankList();
+
             document.getElementById('reading-comprehension-settings-modal').classList.remove('hidden');
             // Populate with existing data if any
             document.getElementById('reading-text-textarea').value = readingComprehensionData.text || '';
@@ -8599,6 +9658,45 @@ ${existingText}
         // === Reading Comprehension Question Bank Functions ===
 
         /**
+         * Get classroom-specific reading bank key
+         */
+        function getReadingBankKey() {
+            return classroomCode ? `readingQuestionBanks_${classroomCode}` : 'readingQuestionBanks_default';
+        }
+
+        /**
+         * Load reading question banks from localStorage for current classroom
+         */
+        function loadReadingBanksFromStorage() {
+            if (!classroomCode) return;
+            const key = getReadingBankKey();
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                try {
+                    readingQuestionBanks = JSON.parse(stored);
+                } catch (e) {
+                    console.error('載入閱讀測驗題庫失敗:', e);
+                    readingQuestionBanks = [];
+                }
+            } else {
+                readingQuestionBanks = [];
+            }
+        }
+
+        /**
+         * Save reading question banks to localStorage for current classroom
+         */
+        function saveReadingBanksToStorage() {
+            if (!classroomCode) return;
+            const key = getReadingBankKey();
+            try {
+                localStorage.setItem(key, JSON.stringify(readingQuestionBanks));
+            } catch (e) {
+                console.error('儲存閱讀測驗題庫失敗:', e);
+            }
+        }
+
+        /**
          * Load text and questions from separate files
          */
         async function loadReadingFiles() {
@@ -8663,6 +9761,9 @@ ${existingText}
                 return;
             }
 
+            // Load from storage first to get current banks for this classroom
+            loadReadingBanksFromStorage();
+
             const bank = {
                 name: bankName,
                 text: textContent,
@@ -8681,7 +9782,7 @@ ${existingText}
                 readingQuestionBanks.push(bank);
             }
 
-            localStorage.setItem('readingQuestionBanks', JSON.stringify(readingQuestionBanks));
+            saveReadingBanksToStorage();
             updateReadingBankList();
             showMessage(`題庫「${bankName}」已儲存！`, 'success');
             nameInput.value = '';
@@ -8691,6 +9792,7 @@ ${existingText}
          * Update reading question bank list display
          */
         function updateReadingBankList() {
+            loadReadingBanksFromStorage(); // Load from storage first
             const listContainer = document.getElementById('reading-question-bank-list');
 
             if (readingQuestionBanks.length === 0) {
@@ -8726,11 +9828,12 @@ ${existingText}
          * Delete reading bank
          */
         function deleteReadingBank(index) {
+            loadReadingBanksFromStorage(); // Load from storage first
             if (index >= 0 && index < readingQuestionBanks.length) {
                 const bankName = readingQuestionBanks[index].name;
                 if (confirm(`確定要刪除題庫「${bankName}」嗎？`)) {
                     readingQuestionBanks.splice(index, 1);
-                    localStorage.setItem('readingQuestionBanks', JSON.stringify(readingQuestionBanks));
+                    saveReadingBanksToStorage();
                     updateReadingBankList();
                     showMessage(`題庫「${bankName}」已刪除`, 'success');
                 }
@@ -8741,16 +9844,8 @@ ${existingText}
         window.loadReadingBankToTextarea = loadReadingBankToTextarea;
         window.deleteReadingBank = deleteReadingBank;
 
-        // Load reading question banks from localStorage on init
-        const savedReadingBanks = localStorage.getItem('readingQuestionBanks');
-        if (savedReadingBanks) {
-            try {
-                readingQuestionBanks = JSON.parse(savedReadingBanks);
-                updateReadingBankList();
-            } catch (e) {
-                console.error('Failed to parse reading question banks:', e);
-            }
-        }
+        // Note: Reading question banks are loaded when teacher enters classroom
+        // (see loadReadingBanksFromStorage() call in teacher setup)
 
         // --- Start Application ---
         initialize();
